@@ -24,16 +24,20 @@ def findFourKeyPoint(img, circularity):
   det = cv2.SimpleBlobDetector_create(params)
   kp = det.detect(img)
 
+  if (len(kp) == 0):
+    return [], []
+
   hull = cv2.convexHull(cv2.KeyPoint_convert(kp))
   points = list()
   for i in hull:
       points.append(i[0])
+
   return kp, points
 
 
 def detectAndWrapCorner(img_src):
   img = img_src.copy()
-  img = cv2.GaussianBlur(img_src, (3, 3), 0)
+  img = cv2.GaussianBlur(img_src, (15, 15), 0)
   r, img = cv2.threshold(img, 180, 255, cv2.THRESH_BINARY)
 
   # binary search the exact circularity for find exactly 4 keypoints
@@ -56,7 +60,7 @@ def detectAndWrapCorner(img_src):
     print('> 100 loop on fnding keypoint')
     return None
 
-  im_with_keypoints = cv2.drawKeypoints(img_src, kp, np.array([]), (0, 0, 255),
+  img_with_keypoints = cv2.drawKeypoints(img_src, kp, np.array([]), (0, 0, 255),
                                         cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
   # sort clockwise from top-left
@@ -84,7 +88,7 @@ def detectAndWrapCorner(img_src):
 
   matrix = cv2.getPerspectiveTransform(points, dst)
 
-  transform = cv2.warpPerspective(im_with_keypoints, matrix, out_size)
+  transform = cv2.warpPerspective(img_with_keypoints, matrix, out_size)
 
   return transform
 
@@ -125,7 +129,7 @@ def main(folder_name):
     plt.xticks([]),plt.yticks([])
     plt.show()
 
-    cv2.imwrite(file_name[:-4] + "-out.jpg", img_out)
+    cv2.imwrite(file_name[:-4] + "-out.jpeg", img_out)
 
 
 if __name__ == '__main__':
@@ -135,9 +139,6 @@ if __name__ == '__main__':
   if (len(sys.argv) < 2):
     print(usage)
   elif (len(sys.argv) < 3):
-    errcode = main(sys.argv[1])
+    main(sys.argv[1])
   else:
     print(usage)
-
-  if (errcode != 0):
-    print('exit with error code ' + str(errcode))
