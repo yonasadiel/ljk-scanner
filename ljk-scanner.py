@@ -2,9 +2,14 @@ from matplotlib import pyplot as plt
 import numpy as np
 import cv2
 import math
-import sys, glob
+import sys, glob, time
 
-IMAGE_WIDTH = 1000
+IMG_WIDTH = 1000
+LJK_RATIO = 19.2/26
+ROW = 62
+COL = 46
+FILLED_PERCENTAGE = 50
+CELL_MARGIN = 0.2
 
 def findFourKeyPoint(img, circularity):
   # find 4 keypoint from image with known minimum circularity
@@ -34,10 +39,10 @@ def findFourKeyPoint(img, circularity):
 
   return kp, points
 
-
 def detectAndWrapCorner(img_src):
   img = img_src.copy()
-  img = cv2.GaussianBlur(img_src, (15, 15), 0)
+  blur_radius = int(IMG_WIDTH/125)*2+1
+  img = cv2.GaussianBlur(img_src, (blur_radius, blur_radius), 0)
   r, img = cv2.threshold(img, 180, 255, cv2.THRESH_BINARY)
 
   # binary search the exact circularity for find exactly 4 keypoints
@@ -78,7 +83,7 @@ def detectAndWrapCorner(img_src):
               return 2
 
   points = np.array(sorted(points, key=cmp), dtype=np.float32)
-  out_size = (img.shape[1], img.shape[0])
+  out_size = (IMG_WIDTH, int(IMG_WIDTH/LJK_RATIO))
   offset = out_size[0]/120
   dst = np.array([[offset, offset],
                   [out_size[0] - offset, offset],
@@ -88,7 +93,7 @@ def detectAndWrapCorner(img_src):
 
   matrix = cv2.getPerspectiveTransform(points, dst)
 
-  transform = cv2.warpPerspective(img_with_keypoints, matrix, out_size)
+  transform = cv2.warpPerspective(img_src, matrix, out_size)
 
   return transform
 
@@ -101,6 +106,46 @@ def getOnlyBlueChannel(img_src):
   img_grey = cv2.cvtColor(img_blue, cv2.COLOR_BGR2GRAY)
   return img_grey
 
+def getCoordinateFromIndices(img, row, col):
+  t_row = img.shape[0]
+  t_col = img.shape[1]
+
+  r = int(row * t_row / ROW)
+  c = int(col * t_col / COL)
+
+  return r,c
+
+def isFilled(img, row, col):
+  width = int(IMG_WIDTH / (COL))
+
+  r_top, c_lft = getCoordinateFromIndices(img, row, col)
+  r_btm = r_top + width
+  c_rgt = c_lft + width
+
+  r_top += int(CELL_MARGIN * width)
+  c_lft += int(CELL_MARGIN * width)
+  r_btm -= int(CELL_MARGIN * width)
+  c_rgt -= int(CELL_MARGIN * width)
+
+  cnt_black = 0
+  for r_i in range(r_top, r_btm+1):
+    for c_i in range(c_lft, c_rgt+1):
+      if (img[r_i][c_i] < 120):
+        cnt_black += 1
+
+  return (cnt_black / ((r_btm - r_top)*(c_rgt - c_lft)) >= FILLED_PERCENTAGE / 100)
+
+def createAnswerMatrix(img):
+  offset = int(IMG_WIDTH / (COL)/ 2)
+  ljk_mat = [[0 for i in range(COL)] for j in range(ROW)]
+  for i in range(0,ROW):
+    for j in range(0, COL):
+      r,c = getCoordinateFromIndices(img, i,j)
+      if (isFilled(img, i, j)):
+        cv2.rectangle(img, (c, r), (c+offset*2, r+offset*2), 128, 5)
+        ljk_mat[i][j] = 1
+  return ljk_mat
+
 def processImage(img_in):
   if (img_in.all() == None):
     print('file not found')
@@ -110,7 +155,7 @@ def processImage(img_in):
   img_ori_width  = img_in.shape[1]
   img_ratio      = img_ori_width / img_ori_height
 
-  img_in = cv2.resize(img_in, (IMAGE_WIDTH, int(IMAGE_WIDTH/img_ratio)))
+  img_in = cv2.resize(img_in, (IMG_WIDTH, int(IMG_WIDTH/img_ratio)))
 
   img_grey = getOnlyBlueChannel(img_in)
   
@@ -118,19 +163,19 @@ def processImage(img_in):
 
   img_wrp = detectAndWrapCorner(img_th)
 
+  ljk_mat = createAnswerMatrix(img_wrp)
+
   return img_wrp
 
 def main(folder_name):
+  time_start = time.time()
+
   for file_name in glob.glob(folder_name + '/*.jpg'):
     img_in = cv2.imread(file_name)
     img_out = processImage(img_in)
 
-    plt.subplot(1,1,1),plt.imshow(img_out, 'gray')
-    plt.xticks([]),plt.yticks([])
-    plt.show()
-
     cv2.imwrite(file_name[:-4] + "-out.jpeg", img_out)
-
+    print('[%8.3f] %s processed' % (time.time() - time_start, file_name))
 
 if __name__ == '__main__':
   errcode = 0
