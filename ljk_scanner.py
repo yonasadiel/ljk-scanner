@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import math
 import sys, glob, time
+import ljk_grader
 
 IMG_WIDTH = 1000
 LJK_RATIO = 19.2/26
@@ -10,6 +11,7 @@ ROW = 62
 COL = 46
 FILLED_PERCENTAGE = 50
 CELL_MARGIN = 0.2
+FILE_NAME = 'output.dat'
 
 def findFourKeyPoint(img, circularity):
   # find 4 keypoint from image with known minimum circularity
@@ -41,7 +43,7 @@ def findFourKeyPoint(img, circularity):
 
 def detectAndWrapCorner(img_src):
   img = img_src.copy()
-  blur_radius = int(IMG_WIDTH/125)*2+1
+  blur_radius = int(IMG_WIDTH/100)*2+1
   img = cv2.GaussianBlur(img_src, (blur_radius, blur_radius), 0)
   r, img = cv2.threshold(img, 180, 255, cv2.THRESH_BINARY)
 
@@ -146,6 +148,33 @@ def createAnswerMatrix(img):
         ljk_mat[i][j] = 1
   return ljk_mat
 
+def printToFile(obj):
+  (
+    nama_peserta, nomor_peserta, kode_soal,
+    kode_sekolah, kode_cabang,
+    pilihan_1, pilihan_2, pilihan_3,
+    jawaban, kode_kelas, mata_ujian, materi_ujian
+  ) = obj
+
+  ans = ''.join(jawaban)
+
+  fout = open(FILE_NAME, 'a+')
+  fout.write(
+    nama_peserta + '\t' +
+    nomor_peserta + '\t' +
+    kode_soal + '\t' + 
+    kode_sekolah + '\t' + 
+    kode_cabang + '\t' +
+    pilihan_1 + '\t' +
+    pilihan_2 + '\t' +
+    pilihan_3 + '\t' +
+    ans + '\t' +
+    kode_kelas + '\t' +
+    mata_ujian + '\t' +
+    materi_ujian + '\n'
+  )
+  fout.close()
+
 def processImage(img_in):
   if (img_in.all() == None):
     print('file not found')
@@ -165,6 +194,8 @@ def processImage(img_in):
 
   ljk_mat = createAnswerMatrix(img_wrp)
 
+  printToFile(ljk_grader.processMatrix(ljk_mat))
+
   return img_wrp
 
 def main(folder_name):
@@ -179,7 +210,7 @@ def main(folder_name):
 
 if __name__ == '__main__':
   errcode = 0
-  usage = 'Usage: python ljk-scanner.py foldername'
+  usage = 'Usage: python ljk_scanner.py foldername'
 
   if (len(sys.argv) < 2):
     print(usage)
