@@ -23,7 +23,7 @@ def findFourKeyPoint(img, circularity):
   params.maxCircularity = 1
 
   params.filterByConvexity = True
-  params.minConvexity = 0.90
+  params.minConvexity = 0.85
 
   params.filterByArea = True
   params.minArea = img.shape[0]*img.shape[1]//10000
@@ -43,7 +43,7 @@ def findFourKeyPoint(img, circularity):
 
 def detectAndWrapCorner(img_src):
   img = img_src.copy()
-  blur_radius = int(IMG_WIDTH/100)*2+1
+  blur_radius = IMG_WIDTH//100*2+1
   img = cv2.GaussianBlur(img_src, (blur_radius, blur_radius), 0)
   r, img = cv2.threshold(img, 180, 255, cv2.THRESH_BINARY)
 
@@ -72,25 +72,25 @@ def detectAndWrapCorner(img_src):
 
   # sort clockwise from top-left
   def cmp(point):
-      center = img.shape[1]/2, img.shape[0]/2
-      if point[0] < center[0]:
-          if(point[1] < center[1]):
-              return 0
-          else:
-              return 3
+    center = img.shape[1]/2, img.shape[0]/2
+    if point[0] < center[0]:
+      if(point[1] < center[1]):
+        return 0
       else:
-          if(point[1] < center[1]):
-              return 1
-          else:
-              return 2
+        return 3
+    else:
+      if(point[1] < center[1]):
+        return 1
+      else:
+        return 2
 
   points = np.array(sorted(points, key=cmp), dtype=np.float32)
   out_size = (IMG_WIDTH, int(IMG_WIDTH/LJK_RATIO))
-  offset = out_size[0]/120
-  dst = np.array([[offset, offset],
-                  [out_size[0] - offset, offset],
-                  [out_size[0] - offset, out_size[1] - offset],
-                  [offset, out_size[1] - offset]],
+  offset = (out_size[0]/COL/2, out_size[1]/ROW/2)
+  dst = np.array([[              offset[0],               offset[1]],
+                  [out_size[0] - offset[0],               offset[1]],
+                  [out_size[0] - offset[0], out_size[1] - offset[1]],
+                  [              offset[0], out_size[1] - offset[1]]],
                   dtype=np.float32)
 
   matrix = cv2.getPerspectiveTransform(points, dst)
