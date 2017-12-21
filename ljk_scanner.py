@@ -9,6 +9,7 @@ IMG_WIDTH = 1000
 LJK_RATIO = 19.2/26
 ROW = 62
 COL = 46
+MIN_CIRCULARITY = 0.75
 FILLED_PERCENTAGE = 50
 CELL_MARGIN = 0.2
 FILE_NAME = 'output.dat'
@@ -35,9 +36,12 @@ def findFourKeyPoint(img, circularity):
     return [], []
 
   hull = cv2.convexHull(cv2.KeyPoint_convert(kp))
-  points = list()
+  points = [[img.shape[0], img.shape[1]],[0, img.shape[1]],[img.shape[0], 0],[0, 0]]
   for i in hull:
-      points.append(i[0])
+    if (i[0][0] + i[0][1] < points[0][0] + points[0][1]): points[0] = i[0]
+    if (i[0][0] - i[0][1] > points[1][0] - points[1][1]): points[1] = i[0]
+    if (i[0][0] - i[0][1] < points[2][0] - points[2][1]): points[2] = i[0]
+    if (i[0][0] + i[0][1] > points[3][0] + points[3][1]): points[3] = i[0]
 
   return kp, points
 
@@ -48,27 +52,12 @@ def detectAndWrapCorner(img_src):
   r, img = cv2.threshold(img, 180, 255, cv2.THRESH_BINARY)
 
   # binary search the exact circularity for find exactly 4 keypoints
-  points = []
-  kp = None
-  counter = 0
-  min_c = 0.5
-  max_c = 1
-  while (len(points) != 4 and counter < 100):
-    mid_c = (min_c + max_c)/2
-    kp, points = findFourKeyPoint(img, mid_c)
-
-    if (len(points) < 4):
-      max_c = mid_c
-    elif (len(points) > 4):
-      min_c = mid_c
-    counter += 1
-
-  if (counter == 100):
-    print('> 100 loop on fnding keypoint')
-    return None
+  kp, points = findFourKeyPoint(img, MIN_CIRCULARITY)
 
   img_with_keypoints = cv2.drawKeypoints(img_src, kp, np.array([]), (0, 0, 255),
                                         cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+  # cv2.imshow('image', img_with_keypoints)
+  # cv2.waitKey(0)
 
   # sort clockwise from top-left
   def cmp(point):
