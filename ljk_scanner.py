@@ -89,13 +89,8 @@ def detectAndWrapCorner(img_src):
   return transform
 
 def getOnlyBlueChannel(img_src):
-  img_blue = img_src.copy()
-  for i in range(len(img_blue)):
-    for j in range(len(img_blue[i])):
-      img_blue[i][j][1] = img_blue[i][j][0]
-      img_blue[i][j][2] = img_blue[i][j][0]
-  img_grey = cv2.cvtColor(img_blue, cv2.COLOR_BGR2GRAY)
-  return img_grey
+  out_image = cv2.split(img_src)[0]
+  return out_image
 
 def getCoordinateFromIndices(img, row, col):
   t_row = img.shape[0]

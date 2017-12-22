@@ -1,3 +1,5 @@
 raw/*
 **-out.jpeg
 output.dat
+*.lprof
+__pycache__/
