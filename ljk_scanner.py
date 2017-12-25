@@ -173,7 +173,7 @@ def processImage(img_in):
   img_grey = getOnlyBlueChannel(img_in)
   
   img_th = cv2.adaptiveThreshold(img_grey, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2. THRESH_BINARY, 25, 12)
-
+  
   img_wrp = detectAndWrapCorner(img_th)
 
   ljk_mat = createAnswerMatrix(img_wrp)
